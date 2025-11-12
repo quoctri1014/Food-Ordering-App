@@ -15,15 +15,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.AddCircle
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.RemoveCircle
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -38,11 +30,15 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.foodorderingapp.data.CartItem
+import com.example.foodorderingapp.data.CartManager // <-- IMPORT CartManager
+import com.example.foodorderingapp.data.FavoriteManager
 import com.example.foodorderingapp.data.MockData
 import com.example.foodorderingapp.data.Product
 import com.example.foodorderingapp.ui.theme.FoodOrderingAppTheme
@@ -55,6 +51,7 @@ sealed class Screen(val route: String, val icon: ImageVector, val label: String)
     data object Cart : Screen("cart", Icons.Filled.ShoppingCart, "Cart")
     data object Favorite : Screen("favorite", Icons.Filled.Favorite, "Favorite")
     data object Profile : Screen("profile", Icons.Filled.Person, "Profile")
+    data object AllProducts : Screen("all_products/{title}", Icons.Filled.Search, "All Products")
 }
 val items = listOf(Screen.Home, Screen.Cart, Screen.Favorite, Screen.Profile)
 // -------------------------
@@ -82,7 +79,7 @@ fun MainAppContent() {
     val currentRoute = navBackStackEntry?.destination?.route
 
     Scaffold(
-        bottomBar = { AppBottomBar(navController, currentRoute) }, // Truyền NavController
+        bottomBar = { AppBottomBar(navController, currentRoute) },
         containerColor = WhiteSmoke
     ) { innerPadding ->
 
@@ -92,16 +89,28 @@ fun MainAppContent() {
             modifier = Modifier.padding(innerPadding)
         ) {
             composable(Screen.Home.route) {
-                HomeScreen()
+                HomeScreen(navController = navController)
             }
             composable(Screen.Cart.route) {
                 CartScreen()
             }
             composable(Screen.Favorite.route) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("Favorite Screen") }
+
+                FavoriteProductsScreen(navController)
             }
             composable(Screen.Profile.route) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("Profile Screen") }
+            }
+
+            composable(
+                route = Screen.AllProducts.route,
+                arguments = listOf(navArgument("title") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val title = backStackEntry.arguments?.getString("title") ?: "Tất cả Món ăn"
+                AllProductsScreenCompose(
+                    title = title,
+                    onBack = { navController.popBackStack() }
+                )
             }
         }
     }
@@ -138,7 +147,7 @@ fun AppBottomBar(navController: NavController, currentRoute: String?) {
                     Text(
                         screen.label,
                         color = if (selected) PrimaryOrange else Color.Gray,
-                        fontSize = 12.sp // Giảm kích thước chữ để phù hợp với 4 item
+                        fontSize = 12.sp
                     )
                 },
                 colors = NavigationBarItemDefaults.colors(
@@ -155,21 +164,27 @@ fun AppBottomBar(navController: NavController, currentRoute: String?) {
 // --- HOME SCREEN COMPOSE ---
 
 @Composable
-fun HomeScreen(modifier: Modifier = Modifier) {
+fun HomeScreen(navController: NavController, modifier: Modifier = Modifier) {
     val products = MockData.sampleProducts
     val bannerImages = MockData.sampleBanners
+
+    val navigateToAllProducts: (String) -> Unit = { title ->
+        navController.navigate("all_products/$title")
+    }
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 16.dp)
     ) {
         item { SearchBarLayout(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) }
-        item { BannerSection(bannerImages, Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) }
+        // BannerSection sử dụng LazyRow
+        item { BannerSection(bannerImages, Modifier.padding(vertical = 12.dp)) }
 
         item {
             HorizontalProductSection(
                 title = "Our trusted picks",
                 products = products,
+                onViewAllClick = { navigateToAllProducts("Our trusted picks") },
                 modifier = Modifier.padding(top = 8.dp, bottom = 16.dp)
             )
         }
@@ -197,6 +212,7 @@ fun HomeScreen(modifier: Modifier = Modifier) {
     }
 }
 
+// --- SearchBar and BannerSection ---
 
 @Composable
 fun SearchBarLayout(modifier: Modifier = Modifier) {
@@ -217,23 +233,37 @@ fun SearchBarLayout(modifier: Modifier = Modifier) {
 
 @Composable
 fun BannerSection(imageUrls: List<Int>, modifier: Modifier = Modifier) {
-    Card(
+    LazyRow(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp)
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Image(
-            painter = painterResource(id = imageUrls.first()),
-            contentDescription = "Banner",
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(150.dp)
-        )
+        items(imageUrls) { imageUrl ->
+            Card(
+                modifier = Modifier.width(340.dp),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Image(
+                    painter = painterResource(id = imageUrl),
+                    contentDescription = "Banner quảng cáo",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(150.dp)
+                        .clickable { /* Handle banner click */ }
+                )
+            }
+        }
     }
 }
 
 @Composable
-fun HorizontalProductSection(title: String, products: List<Product>, modifier: Modifier = Modifier) {
+fun HorizontalProductSection(
+    title: String,
+    products: List<Product>,
+    onViewAllClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
@@ -243,7 +273,12 @@ fun HorizontalProductSection(title: String, products: List<Product>, modifier: M
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(text = title, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            Text(text = "View all", color = PrimaryOrange, fontSize = 14.sp, modifier = Modifier.clickable { /* Handle View All */ })
+            Text(
+                text = "View all",
+                color = PrimaryOrange,
+                fontSize = 14.sp,
+                modifier = Modifier.clickable(onClick = onViewAllClick)
+            )
         }
         Spacer(Modifier.height(8.dp))
 
@@ -261,6 +296,7 @@ fun HorizontalProductSection(title: String, products: List<Product>, modifier: M
 
 @Composable
 fun ProductGridItem(product: Product, modifier: Modifier = Modifier, isHorizontal: Boolean = false) {
+    val isFavorited = FavoriteManager.isFavorite(product.id)
     Card(
         modifier = modifier
             .width(if (isHorizontal) 160.dp else Dp.Unspecified)
@@ -290,11 +326,17 @@ fun ProductGridItem(product: Product, modifier: Modifier = Modifier, isHorizonta
                 Icon(
                     Icons.Filled.Favorite,
                     contentDescription = "Favorite",
-                    tint = Color.Red,
+                    // Màu sắc thay đổi: Đỏ nếu được yêu thích, Trắng mờ nếu chưa
+                    tint = if (isFavorited) Color.Red else Color.White.copy(alpha = 0.8f),
                     modifier = Modifier
-                        .align(Alignment.TopEnd)
+                        .align(Alignment.TopEnd) // Đặt ở góc trên bên phải
                         .padding(4.dp)
+                        .size(24.dp)
+                        .clickable {
+                            FavoriteManager.toggleFavorite(product)
+                        }
                 )
+
             }
 
             Spacer(Modifier.height(8.dp))
@@ -323,7 +365,6 @@ fun ProductGridItem(product: Product, modifier: Modifier = Modifier, isHorizonta
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Sửa lỗi Deprecated Locale
                 val format = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                     NumberFormat.getCurrencyInstance(Locale.Builder().setLanguage("vi").setRegion("VN").build())
                 } else {
@@ -342,7 +383,10 @@ fun ProductGridItem(product: Product, modifier: Modifier = Modifier, isHorizonta
                     Icons.Filled.AddCircle,
                     contentDescription = "Add to Cart",
                     tint = PrimaryOrange,
-                    modifier = Modifier.size(32.dp).clickable { /* Handle Add to Cart */ }
+                    modifier = Modifier.size(32.dp).clickable {
+                        // XỬ LÝ THÊM SẢN PHẨM VÀO GIỎ HÀNG
+                        CartManager.addItemToCart(product)
+                    }
                 )
             }
         }
@@ -350,36 +394,60 @@ fun ProductGridItem(product: Product, modifier: Modifier = Modifier, isHorizonta
 }
 
 
-// --- CART SCREEN COMPOSE ---
+// --- CART SCREEN COMPOSE (Đã cập nhật sử dụng CartManager) ---
 
 @Composable
 fun CartScreen() {
-    val cartItems = MockData.sampleCartItems
+    // Lấy dữ liệu giỏ hàng từ CartManager
+    val cartItems = CartManager.cartItems
+
     val shippingFee = 25000.0
-    val subtotal = cartItems.sumOf { it.product.price * it.quantity }
+    val subtotal = CartManager.getSubtotal() // Lấy tổng từ Manager
     val total = subtotal + shippingFee
 
     Scaffold(
         topBar = { CartTopBar() },
-        bottomBar = { CartCheckoutButton(total) },
+        bottomBar = { if (cartItems.isNotEmpty()) CartCheckoutButton(total) }, // Chỉ hiện nút Checkout khi có sản phẩm
         containerColor = WhiteSmoke
     ) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            items(cartItems) { item ->
-                CartItemCard(item)
+
+        if (cartItems.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Giỏ hàng của bạn đang rỗng",
+                    fontSize = 18.sp,
+                    color = Color.Gray,
+                    fontWeight = FontWeight.SemiBold
+                )
             }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                items(cartItems, key = { it.product.id }) { item ->
+                    CartItemCard(
+                        item = item,
+                        onIncrease = { CartManager.increaseQuantity(item) },
+                        onDecrease = { CartManager.decreaseQuantity(item) },
+                        onRemove = { CartManager.removeItem(item) }
+                    )
+                }
 
-            item { Spacer(Modifier.height(16.dp)) }
+                item { Spacer(Modifier.height(16.dp)) }
 
-            item { OrderSummaryCard(subtotal, shippingFee, total) }
+                item { OrderSummaryCard(subtotal, shippingFee, total) }
 
-            item { Spacer(Modifier.height(80.dp)) }
+                item { Spacer(Modifier.height(80.dp)) }
+            }
         }
     }
 }
@@ -387,7 +455,6 @@ fun CartScreen() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CartTopBar() {
-    // Lưu ý: Icon ArrowBack đã được chuyển sang Icons.AutoMirrored.Filled.ArrowBack
     TopAppBar(
         title = { Text("Giỏ hàng", fontWeight = FontWeight.Bold, color = Color.Black) },
         navigationIcon = {
@@ -399,8 +466,14 @@ fun CartTopBar() {
     )
 }
 
+// --- CartItemCard đã nhận callback ---
 @Composable
-fun CartItemCard(item: CartItem) {
+fun CartItemCard(
+    item: CartItem,
+    onIncrease: () -> Unit,
+    onDecrease: () -> Unit,
+    onRemove: () -> Unit
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -412,7 +485,6 @@ fun CartItemCard(item: CartItem) {
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Ảnh sản phẩm
             Image(
                 painter = painterResource(id = item.product.imageUrl),
                 contentDescription = item.product.name,
@@ -436,11 +508,11 @@ fun CartItemCard(item: CartItem) {
             // Bộ đếm số lượng và nút xóa
             Column(horizontalAlignment = Alignment.End) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = { /* Decrease quantity */ }) {
+                    IconButton(onClick = onDecrease) {
                         Icon(Icons.Filled.RemoveCircle, contentDescription = "Decrease", tint = Color.Gray)
                     }
                     Text("${item.quantity}", fontWeight = FontWeight.Bold)
-                    IconButton(onClick = { /* Increase quantity */ }) {
+                    IconButton(onClick = onIncrease) {
                         Icon(Icons.Filled.AddCircle, contentDescription = "Increase", tint = PrimaryOrange)
                     }
                 }
@@ -452,12 +524,14 @@ fun CartItemCard(item: CartItem) {
                     tint = Color.Red,
                     modifier = Modifier
                         .size(24.dp)
-                        .clickable { /* Handle item removal */ }
+                        .clickable(onClick = onRemove)
                 )
             }
         }
     }
 }
+
+// --- Các hàm phụ trợ (Giữ nguyên) ---
 
 @Composable
 fun OrderSummaryCard(subtotal: Double, shippingFee: Double, total: Double) {
@@ -519,7 +593,6 @@ fun CartCheckoutButton(total: Double) {
     }
 }
 
-// Hàm hỗ trợ format tiền tệ
 @Composable
 fun formatCurrency(amount: Double): String {
     val format = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
@@ -529,4 +602,113 @@ fun formatCurrency(amount: Double): String {
         NumberFormat.getCurrencyInstance(Locale("vi", "VN"))
     }
     return format.format(amount)
+}
+
+// --- MÀN HÌNH TẤT CẢ SẢN PHẨM ---
+
+@Composable
+fun AllProductsScreenCompose(title: String, onBack: () -> Unit) {
+    val allProducts = MockData.sampleProducts
+
+    Scaffold(
+        topBar = { SimpleAppBarCompose(title = title, onBack = onBack) },
+        containerColor = WhiteSmoke
+    ) { paddingValues ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(horizontal = 10.dp),
+            contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            val chunkedProducts = allProducts.chunked(2)
+            items(chunkedProducts) { row ->
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp),
+                    horizontalArrangement = Arrangement.SpaceAround
+                ) {
+                    row.forEach { product ->
+                        ProductGridItem(product = product, modifier = Modifier.weight(1f).padding(6.dp))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SimpleAppBarCompose(title: String, onBack: () -> Unit) {
+    TopAppBar(
+        title = { Text(text = title, fontWeight = FontWeight.Bold) },
+        navigationIcon = {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+    )
+}
+
+@Composable
+fun FavoriteProductsScreen(navController: NavController) {
+    // Theo dõi danh sách ID sản phẩm yêu thích
+    val favoriteIds = FavoriteManager.favoriteProductIds
+
+    // Lọc ra các sản phẩm yêu thích từ MockData
+    val favoriteProducts = MockData.sampleProducts.filter { favoriteIds.contains(it.id) }
+
+    Scaffold(
+        topBar = { SimpleAppBarCompose(title = "Món ăn yêu thích", onBack = { navController.popBackStack() }) },
+        containerColor = WhiteSmoke
+    ) { paddingValues ->
+        if (favoriteProducts.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxSize().padding(paddingValues),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    "Bạn chưa có món ăn yêu thích nào.",
+                    color = Color.Gray,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(horizontal = 10.dp),
+                contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                // Hiển thị sản phẩm theo dạng Grid 2 cột
+                val chunkedProducts = favoriteProducts.chunked(2)
+                items(chunkedProducts) { row ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceAround
+                    ) {
+                        row.forEach { product ->
+                            // Sử dụng ProductGridItem với chiều cao cố định để đảm bảo ảnh không bị cắt ngang
+                            ProductGridItem(
+                                product = product,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(6.dp)
+                                    // Đặt chiều cao tối thiểu để đảm bảo bố cục đồng nhất
+                                    .heightIn(min = 220.dp)
+                            )
+                        }
+                        // Thêm Spacer nếu hàng chỉ có 1 sản phẩm để căn chỉnh (Fix bug layout 1 item)
+                        if (row.size == 1) {
+                            Spacer(modifier = Modifier.weight(1f).padding(6.dp))
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
