@@ -13,7 +13,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -37,29 +39,42 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.foodorderingapp.data.CartItem
-import com.example.foodorderingapp.data.CartManager // <-- IMPORT CartManager
+import com.example.foodorderingapp.data.CartManager
+import com.example.foodorderingapp.data.Conversation
 import com.example.foodorderingapp.data.FavoriteManager
 import com.example.foodorderingapp.data.MockData
 import com.example.foodorderingapp.data.Product
+import com.example.foodorderingapp.data.Sender
 import com.example.foodorderingapp.ui.theme.FoodOrderingAppTheme
 import java.text.NumberFormat
+import androidx.compose.ui.text.input.KeyboardType
+import com.example.foodorderingapp.data.ChatManager
+import com.example.foodorderingapp.data.ConversationStateManager
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Clear
+import androidx.navigation.NavHostController
+import com.example.foodorderingapp.data.MockData.sampleProducts
 import java.util.*
+import android.app.Activity
+import android.content.Intent
+import android.speech.RecognizerIntent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
 
-// --- NAVIGATION ROUTES ---
 sealed class Screen(val route: String, val icon: ImageVector, val label: String) {
     data object Home : Screen("home", Icons.Filled.Home, "Home")
     data object Cart : Screen("cart", Icons.Filled.ShoppingCart, "Cart")
     data object Favorite : Screen("favorite", Icons.Filled.Favorite, "Favorite")
+    data object Message : Screen("message", Icons.Filled.MailOutline, "Message")
     data object Profile : Screen("profile", Icons.Filled.Person, "Profile")
     data object AllProducts : Screen("all_products/{title}", Icons.Filled.Search, "All Products")
+    data object ChatDetail : Screen("chat_detail/{userName}", Icons.Filled.MailOutline, "Chat Detail")
+    data object Search : Screen("search", Icons.Filled.Search, "Search")
 }
-val items = listOf(Screen.Home, Screen.Cart, Screen.Favorite, Screen.Profile)
-// -------------------------
-
-// Màu sắc Compose
+val items = listOf(Screen.Home, Screen.Cart, Screen.Favorite,Screen.Message, Screen.Profile)
 val PrimaryOrange = Color(0xFFFFC107)
 val WhiteSmoke = Color(0xFFF5F5F5)
-
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -71,18 +86,15 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
-
 @Composable
 fun MainAppContent() {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
-
     Scaffold(
         bottomBar = { AppBottomBar(navController, currentRoute) },
         containerColor = WhiteSmoke
     ) { innerPadding ->
-
         NavHost(
             navController = navController,
             startDestination = Screen.Home.route,
@@ -95,13 +107,14 @@ fun MainAppContent() {
                 CartScreen()
             }
             composable(Screen.Favorite.route) {
-
                 FavoriteProductsScreen(navController)
             }
             composable(Screen.Profile.route) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("Profile Screen") }
             }
-
+            composable(Screen.Search.route) {
+                ProductSearchScreen(navController)
+            }
             composable(
                 route = Screen.AllProducts.route,
                 arguments = listOf(navArgument("title") { type = NavType.StringType })
@@ -112,13 +125,19 @@ fun MainAppContent() {
                     onBack = { navController.popBackStack() }
                 )
             }
+            composable(Screen.Message.route) {
+                MessageScreen(navController)
+            }
+            composable(
+                route = Screen.ChatDetail.route,
+                arguments = listOf(navArgument("userName") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val userName = backStackEntry.arguments?.getString("userName") ?: "Chat"
+                ChatDetailScreen(navController, userName)
+            }
         }
     }
 }
-
-
-// --- BOTTOM BAR ---
-
 @Composable
 fun AppBottomBar(navController: NavController, currentRoute: String?) {
     NavigationBar(
@@ -159,27 +178,49 @@ fun AppBottomBar(navController: NavController, currentRoute: String?) {
         }
     }
 }
-
-
-// --- HOME SCREEN COMPOSE ---
-
 @Composable
 fun HomeScreen(navController: NavController, modifier: Modifier = Modifier) {
     val products = MockData.sampleProducts
     val bannerImages = MockData.sampleBanners
-
+    val context = LocalContext.current
+    val navigateToSearch: () -> Unit = {
+        navController.navigate(Screen.Search.route)
+    }
     val navigateToAllProducts: (String) -> Unit = { title ->
         navController.navigate("all_products/$title")
     }
-
+    val voiceLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val spokenText: String? = result.data?.getStringArrayListExtra(
+                RecognizerIntent.EXTRA_RESULTS
+            )?.get(0)
+            if (spokenText != null) {
+                navController.navigate(Screen.Search.route)
+            }
+        }
+    }
+    val startVoiceSearch: () -> Unit = {
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_PROMPT, "Nói tên món ăn bạn muốn tìm kiếm")
+        }
+        // Gọi Launcher để kích hoạt Intent và chờ kết quả
+        voiceLauncher.launch(intent)
+    }
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 16.dp)
     ) {
-        item { SearchBarLayout(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) }
-        // BannerSection sử dụng LazyRow
+        item {
+            SearchBarLayout(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                onClick = navigateToSearch,
+                onClickVoice = startVoiceSearch
+            )
+        }
         item { BannerSection(bannerImages, Modifier.padding(vertical = 12.dp)) }
-
         item {
             HorizontalProductSection(
                 title = "Our trusted picks",
@@ -188,7 +229,13 @@ fun HomeScreen(navController: NavController, modifier: Modifier = Modifier) {
                 modifier = Modifier.padding(top = 8.dp, bottom = 16.dp)
             )
         }
-
+        item {
+            SearchBarLayout(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                onClick = { navController.navigate(Screen.Search.route) },
+                onClickVoice = { navController.navigate(Screen.Search.route) }
+            )
+        }
         item {
             Text(
                 text = "More to love",
@@ -197,7 +244,6 @@ fun HomeScreen(navController: NavController, modifier: Modifier = Modifier) {
                 modifier = Modifier.padding(start = 16.dp, bottom = 8.dp)
             )
         }
-
         val chunkedProducts = products.chunked(2)
         items(chunkedProducts) { row ->
             Row(
@@ -211,26 +257,27 @@ fun HomeScreen(navController: NavController, modifier: Modifier = Modifier) {
         }
     }
 }
-
-// --- SearchBar and BannerSection ---
-
 @Composable
-fun SearchBarLayout(modifier: Modifier = Modifier) {
+fun SearchBarLayout(modifier: Modifier = Modifier, onClick: () -> Unit = {}, onClickVoice: () -> Unit = {}) { // <--- THÊM onClick
     Row(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .background(Color.White)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .clickable(onClick = onClick),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(Icons.Filled.Search, contentDescription = "Search", tint = Color.Gray)
         Spacer(Modifier.width(8.dp))
-        Text(text = "Search...", color = Color.Gray, modifier = Modifier.weight(1f))
-        Icon(Icons.Filled.Mic, contentDescription = "Voice Search", tint = Color.Gray)
+        Box(modifier = Modifier.weight(1f)) {
+            Text(text = "Search...", color = Color.Gray)
+        }
+        IconButton(onClick = onClickVoice) {
+            Icon(Icons.Filled.Mic, contentDescription = "Voice Search", tint = Color.Gray)
+        }
     }
 }
-
 @Composable
 fun BannerSection(imageUrls: List<Int>, modifier: Modifier = Modifier) {
     LazyRow(
@@ -250,13 +297,12 @@ fun BannerSection(imageUrls: List<Int>, modifier: Modifier = Modifier) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(150.dp)
-                        .clickable { /* Handle banner click */ }
+                        .clickable { }
                 )
             }
         }
     }
 }
-
 @Composable
 fun HorizontalProductSection(
     title: String,
@@ -292,8 +338,6 @@ fun HorizontalProductSection(
         }
     }
 }
-
-
 @Composable
 fun ProductGridItem(product: Product, modifier: Modifier = Modifier, isHorizontal: Boolean = false) {
     val isFavorited = FavoriteManager.isFavorite(product.id)
@@ -309,7 +353,6 @@ fun ProductGridItem(product: Product, modifier: Modifier = Modifier, isHorizonta
                 .fillMaxSize()
                 .padding(8.dp)
         ) {
-            // Image and Favorite Icon
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -326,22 +369,17 @@ fun ProductGridItem(product: Product, modifier: Modifier = Modifier, isHorizonta
                 Icon(
                     Icons.Filled.Favorite,
                     contentDescription = "Favorite",
-                    // Màu sắc thay đổi: Đỏ nếu được yêu thích, Trắng mờ nếu chưa
                     tint = if (isFavorited) Color.Red else Color.White.copy(alpha = 0.8f),
                     modifier = Modifier
-                        .align(Alignment.TopEnd) // Đặt ở góc trên bên phải
+                        .align(Alignment.TopEnd)
                         .padding(4.dp)
                         .size(24.dp)
                         .clickable {
                             FavoriteManager.toggleFavorite(product)
                         }
                 )
-
             }
-
             Spacer(Modifier.height(8.dp))
-
-            // Name
             Text(
                 text = product.name,
                 fontSize = 14.sp,
@@ -349,17 +387,12 @@ fun ProductGridItem(product: Product, modifier: Modifier = Modifier, isHorizonta
                 maxLines = 1,
                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
             )
-
-            // Rating
             Text(
                 text = "${product.rating} ★",
                 fontSize = 12.sp,
                 color = Color.Gray
             )
-
             Spacer(Modifier.weight(1f))
-
-            // Price and Add button
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -371,20 +404,17 @@ fun ProductGridItem(product: Product, modifier: Modifier = Modifier, isHorizonta
                     @Suppress("DEPRECATION")
                     NumberFormat.getCurrencyInstance(Locale("vi", "VN"))
                 }
-
                 Text(
                     text = format.format(product.price),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     color = PrimaryOrange
                 )
-
                 Icon(
                     Icons.Filled.AddCircle,
                     contentDescription = "Add to Cart",
                     tint = PrimaryOrange,
                     modifier = Modifier.size(32.dp).clickable {
-                        // XỬ LÝ THÊM SẢN PHẨM VÀO GIỎ HÀNG
                         CartManager.addItemToCart(product)
                     }
                 )
@@ -392,25 +422,17 @@ fun ProductGridItem(product: Product, modifier: Modifier = Modifier, isHorizonta
         }
     }
 }
-
-
-// --- CART SCREEN COMPOSE (Đã cập nhật sử dụng CartManager) ---
-
 @Composable
 fun CartScreen() {
-    // Lấy dữ liệu giỏ hàng từ CartManager
     val cartItems = CartManager.cartItems
-
     val shippingFee = 25000.0
-    val subtotal = CartManager.getSubtotal() // Lấy tổng từ Manager
+    val subtotal = CartManager.getSubtotal()
     val total = subtotal + shippingFee
-
     Scaffold(
         topBar = { CartTopBar() },
-        bottomBar = { if (cartItems.isNotEmpty()) CartCheckoutButton(total) }, // Chỉ hiện nút Checkout khi có sản phẩm
+        bottomBar = { if (cartItems.isNotEmpty()) CartCheckoutButton(total) },
         containerColor = WhiteSmoke
     ) { paddingValues ->
-
         if (cartItems.isEmpty()) {
             Box(
                 modifier = Modifier
@@ -441,7 +463,6 @@ fun CartScreen() {
                         onRemove = { CartManager.removeItem(item) }
                     )
                 }
-
                 item { Spacer(Modifier.height(16.dp)) }
 
                 item { OrderSummaryCard(subtotal, shippingFee, total) }
@@ -451,7 +472,6 @@ fun CartScreen() {
         }
     }
 }
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CartTopBar() {
@@ -465,8 +485,6 @@ fun CartTopBar() {
         colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
     )
 }
-
-// --- CartItemCard đã nhận callback ---
 @Composable
 fun CartItemCard(
     item: CartItem,
@@ -494,7 +512,6 @@ fun CartItemCard(
                     .clip(RoundedCornerShape(8.dp))
             )
             Spacer(Modifier.width(12.dp))
-
             Column(modifier = Modifier.weight(1f)) {
                 Text(item.product.name, fontWeight = FontWeight.Bold, fontSize = 16.sp, maxLines = 1)
                 Text(
@@ -504,8 +521,6 @@ fun CartItemCard(
                     fontSize = 14.sp
                 )
             }
-
-            // Bộ đếm số lượng và nút xóa
             Column(horizontalAlignment = Alignment.End) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = onDecrease) {
@@ -517,7 +532,6 @@ fun CartItemCard(
                     }
                 }
                 Spacer(Modifier.height(4.dp))
-                // Nút xóa
                 Icon(
                     Icons.Filled.Delete,
                     contentDescription = "Remove",
@@ -530,9 +544,6 @@ fun CartItemCard(
         }
     }
 }
-
-// --- Các hàm phụ trợ (Giữ nguyên) ---
-
 @Composable
 fun OrderSummaryCard(subtotal: Double, shippingFee: Double, total: Double) {
     Card(
@@ -548,7 +559,6 @@ fun OrderSummaryCard(subtotal: Double, shippingFee: Double, total: Double) {
         }
     }
 }
-
 @Composable
 fun SummaryRow(label: String, amount: Double, isTotal: Boolean = false) {
     Row(
@@ -568,7 +578,6 @@ fun SummaryRow(label: String, amount: Double, isTotal: Boolean = false) {
         )
     }
 }
-
 @Composable
 fun CartCheckoutButton(total: Double) {
     Box(
@@ -578,7 +587,7 @@ fun CartCheckoutButton(total: Double) {
             .padding(16.dp)
     ) {
         Button(
-            onClick = { /* Handle checkout action */ },
+            onClick = {  },
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(containerColor = PrimaryOrange),
             contentPadding = PaddingValues(vertical = 14.dp)
@@ -592,7 +601,6 @@ fun CartCheckoutButton(total: Double) {
         }
     }
 }
-
 @Composable
 fun formatCurrency(amount: Double): String {
     val format = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
@@ -603,13 +611,9 @@ fun formatCurrency(amount: Double): String {
     }
     return format.format(amount)
 }
-
-// --- MÀN HÌNH TẤT CẢ SẢN PHẨM ---
-
 @Composable
 fun AllProductsScreenCompose(title: String, onBack: () -> Unit) {
     val allProducts = MockData.sampleProducts
-
     Scaffold(
         topBar = { SimpleAppBarCompose(title = title, onBack = onBack) },
         containerColor = WhiteSmoke
@@ -636,7 +640,6 @@ fun AllProductsScreenCompose(title: String, onBack: () -> Unit) {
         }
     }
 }
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SimpleAppBarCompose(title: String, onBack: () -> Unit) {
@@ -650,15 +653,10 @@ fun SimpleAppBarCompose(title: String, onBack: () -> Unit) {
         colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
     )
 }
-
 @Composable
 fun FavoriteProductsScreen(navController: NavController) {
-    // Theo dõi danh sách ID sản phẩm yêu thích
     val favoriteIds = FavoriteManager.favoriteProductIds
-
-    // Lọc ra các sản phẩm yêu thích từ MockData
     val favoriteProducts = MockData.sampleProducts.filter { favoriteIds.contains(it.id) }
-
     Scaffold(
         topBar = { SimpleAppBarCompose(title = "Món ăn yêu thích", onBack = { navController.popBackStack() }) },
         containerColor = WhiteSmoke
@@ -684,7 +682,6 @@ fun FavoriteProductsScreen(navController: NavController) {
                 contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                // Hiển thị sản phẩm theo dạng Grid 2 cột
                 val chunkedProducts = favoriteProducts.chunked(2)
                 items(chunkedProducts) { row ->
                     Row(
@@ -692,17 +689,14 @@ fun FavoriteProductsScreen(navController: NavController) {
                         horizontalArrangement = Arrangement.SpaceAround
                     ) {
                         row.forEach { product ->
-                            // Sử dụng ProductGridItem với chiều cao cố định để đảm bảo ảnh không bị cắt ngang
                             ProductGridItem(
                                 product = product,
                                 modifier = Modifier
                                     .weight(1f)
                                     .padding(6.dp)
-                                    // Đặt chiều cao tối thiểu để đảm bảo bố cục đồng nhất
                                     .heightIn(min = 220.dp)
                             )
                         }
-                        // Thêm Spacer nếu hàng chỉ có 1 sản phẩm để căn chỉnh (Fix bug layout 1 item)
                         if (row.size == 1) {
                             Spacer(modifier = Modifier.weight(1f).padding(6.dp))
                         }
@@ -711,4 +705,231 @@ fun FavoriteProductsScreen(navController: NavController) {
             }
         }
     }
+}
+@Composable
+fun MessageScreen(navController: NavController) {
+    val conversations = MockData.sampleConversations
+    Scaffold(
+        topBar = { SimpleAppBarCompose(title = "Tin nhắn", onBack = { }) },
+        containerColor = Color.White
+    ) { paddingValues ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues),
+            contentPadding = PaddingValues(vertical = 8.dp)
+        ) {
+            items(conversations, key = { it.id }) { conversation ->
+                ConversationItem(
+                    conversation = conversation,
+                    onClick = {
+                        navController.navigate("chat_detail/${conversation.userName}")
+                    }
+                )
+                Divider(color = WhiteSmoke, thickness = 1.dp)
+            }
+        }
+    }
+}
+@Composable
+fun ConversationItem(conversation: Conversation, onClick: () -> Unit) {
+    val (lastMessageState, timestampState) = ConversationStateManager.getConversationState(
+        userName = conversation.userName,
+        initialMessage = conversation.lastMessage,
+        initialTimestamp = conversation.timestamp
+    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = conversation.userName, fontWeight = FontWeight.Bold, fontSize = 16.sp, maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+            )
+            Text(
+                text = lastMessageState.value, color = Color.Gray, fontSize = 14.sp, maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+            )
+        }
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = timestampState.value, color = Color.DarkGray, fontSize = 12.sp
+        )
+    }
+}
+@Composable
+fun MessageBubble(message: com.example.foodorderingapp.data.Message) {
+    val isUser = message.sender == Sender.USER
+    val alignment = if (isUser) Alignment.CenterEnd else Alignment.CenterStart
+    val bubbleColor = if (isUser) PrimaryOrange else Color.White
+    val textColor = if (isUser) Color.White else Color.Black
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        contentAlignment = alignment
+    ) {
+        Card(
+            shape = RoundedCornerShape(
+                topStart = 16.dp, topEnd = 16.dp, bottomStart = if (isUser) 16.dp else 4.dp, bottomEnd = if (isUser) 4.dp else 16.dp
+            ),
+            colors = CardDefaults.cardColors(containerColor = bubbleColor), elevation = CardDefaults.cardElevation(defaultElevation = 1.dp), modifier = Modifier.widthIn(max = 300.dp)
+        ) {
+            Text(
+                text = message.text, color = textColor, fontSize = 15.sp, modifier = Modifier.padding(10.dp)
+            )
+        }
+    }
+}
+@Composable
+fun ChatDetailScreen(navController: NavController, userName: String) {
+    val chatMessages = ChatManager.getMessagesForUser(userName)
+    val onSendMessage: (String) -> Unit = { text ->
+        ChatManager.sendMessage(userName, text, Sender.USER)
+    }
+    Scaffold(
+        topBar = {
+            SimpleAppBarCompose(title = userName, onBack = { navController.popBackStack() })
+        },
+        bottomBar = { ChatInputField(onSendMessage = onSendMessage) }, containerColor = Color(0xFFF7E2C9)
+    ) { paddingValues ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(horizontal = 4.dp),
+            reverseLayout = true
+        ) {
+            items(chatMessages.reversed(), key = { it.id }) { message ->
+                MessageBubble(message = message)
+            }
+        }
+    }
+}
+@Composable
+fun ChatInputField(onSendMessage: (String) -> Unit) {
+    var message by remember { mutableStateOf("") }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color.White)
+            .padding(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        OutlinedTextField(
+            value = message,
+            onValueChange = { message = it }, placeholder = { Text("Nhập tin nhắn...") }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(24.dp),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Text, imeAction = ImeAction.Send
+            ),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = PrimaryOrange, unfocusedBorderColor = Color.LightGray, focusedContainerColor = Color.White, unfocusedContainerColor = Color.White
+            )
+        )
+        Spacer(Modifier.width(8.dp))
+        FloatingActionButton(
+            onClick = {
+                if (message.isNotBlank()) {
+                    onSendMessage(message)
+                    message = ""
+                }
+            },
+            containerColor = PrimaryOrange, modifier = Modifier.size(48.dp)
+        ) {
+            Icon(Icons.Filled.Send, contentDescription = "Gửi", tint = Color.White)
+        }
+    }
+}
+@Composable
+fun ProductSearchScreen(navController: NavHostController) {
+    var searchText by remember { mutableStateOf("") }
+    val filteredProducts = remember(searchText) {
+        if (searchText.isBlank()) {
+            emptyList()
+        } else {
+            sampleProducts.filter { product ->
+                product.name.contains(searchText, ignoreCase = true)
+            }
+        }
+    }
+    val chunkedProducts = filteredProducts.chunked(2)
+    Scaffold(
+        topBar = {
+            Column {
+                SimpleAppBarCompose(title = "Tìm kiếm", onBack = { navController.popBackStack() })
+                SearchInputField(
+                    searchText = searchText,
+                    onSearchTextChange = { searchText = it }
+                )
+            }
+        }
+    ) { paddingValues ->
+        LazyColumn(
+            modifier = Modifier
+                .padding(paddingValues)
+                .padding(horizontal = 10.dp)
+                .fillMaxSize(),
+            contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            if (searchText.isNotBlank() && filteredProducts.isEmpty()) {
+                item {
+                    Text(
+                        "Không tìm thấy món ăn nào khớp với '${searchText}'",
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
+            } else if (searchText.isBlank()) {
+                item {
+                    Text(
+                        "Hãy nhập tên món ăn để tìm kiếm...",
+                        modifier = Modifier.padding(16.dp),
+                        color = Color.Gray
+                    )
+                }
+            }
+            items(chunkedProducts) { row ->
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp),
+                    horizontalArrangement = Arrangement.SpaceAround
+                ) {
+                    row.forEach { product ->
+                        ProductGridItem(
+                            product = product,
+                            modifier = Modifier.weight(1f).padding(6.dp)
+                        )
+                    }
+                    if (row.size == 1) {
+                        Spacer(modifier = Modifier.weight(1f).padding(6.dp))
+                    }
+                }
+            }
+        }
+    }
+}
+@Composable
+fun SearchInputField(searchText: String, onSearchTextChange: (String) -> Unit) {
+    OutlinedTextField(
+        value = searchText,
+        onValueChange = onSearchTextChange,
+        placeholder = { Text("Search...") },
+        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = "Tìm kiếm") },
+        trailingIcon = {
+            if (searchText.isNotBlank()) {
+                IconButton(onClick = { onSearchTextChange("") }) {
+                    Icon(Icons.Filled.Clear, contentDescription = "Xóa")
+                }
+            }
+        },
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        singleLine = true,
+        shape = RoundedCornerShape(24.dp)
+    )
 }

@@ -6,11 +6,10 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.compose.ui.platform.ComposeView
 import androidx.fragment.app.Fragment
-import com.example.foodorderingapp.R // Đã thêm
+import com.example.foodorderingapp.R
 import com.example.foodorderingapp.data.MockData
 import com.example.foodorderingapp.ui.theme.allproducts.AllProductsFragment
 
-// Thay thế HomeFragment bằng Compose Fragment
 class HomeComposeFragment : Fragment() {
 
     override fun onCreateView(
