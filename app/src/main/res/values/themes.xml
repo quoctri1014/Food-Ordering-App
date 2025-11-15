@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Chỉnh tên theme thành Theme.FoodApp -->
+    <style name="Theme.FoodApp" parent="android:Theme.Material.Light.NoActionBar" />
+
+</resources>
