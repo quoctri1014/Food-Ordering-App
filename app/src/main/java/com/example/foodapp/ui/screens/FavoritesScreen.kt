@@ -9,11 +9,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.foodapp.data.model.Food
+import com.example.foodapp.data.Food
 import com.example.foodapp.ui.components.FoodItemCard
 
+
 @Composable
-fun SavedScreen(
+fun FavoritesScreen(
     savedFoods: List<Food>,
     onDetailClick: (Food) -> Unit,
     onToggleSaved: (Food) -> Unit
@@ -38,7 +39,7 @@ fun SavedScreen(
                         food = food,
                         onDetailClick = onDetailClick,
                         onToggleSaved = onToggleSaved,
-                        isSaved = true
+                        isSaved = true // Luôn là true vì đây là màn hình Favorites
                     )
                 }
             }

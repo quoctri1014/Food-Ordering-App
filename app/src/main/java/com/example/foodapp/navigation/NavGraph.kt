@@ -21,6 +21,7 @@ import com.example.foodapp.ui.screens.profile.* // Đảm bảo đã import các
 fun NavGraph(navController: NavHostController, modifier: Modifier = Modifier) {
 
     val foods: List<Food> = mockFoods
+    // ⭐ GIỎ HÀNG CHUNG: Dữ liệu được lưu trữ ở đây, đảm bảo không bị mất khi thoát màn hình
     val savedFoods = remember { mutableStateListOf<String>() }
     val cartItemsList = remember { mutableStateListOf<CartItem>() }
 
@@ -37,6 +38,7 @@ fun NavGraph(navController: NavHostController, modifier: Modifier = Modifier) {
         }
     }
 
+    // ⭐ LOGIC CẬP NHẬT: Thay đổi trực tiếp cartItemsList
     val onUpdateCart: (CartItem, Int) -> Unit = { cartItem, change ->
         val existing = cartItemsList.find { it.food.id == cartItem.food.id }
         if (existing != null) {
@@ -47,6 +49,11 @@ fun NavGraph(navController: NavHostController, modifier: Modifier = Modifier) {
                 cartItemsList[idx] = existing.copy(quantity = newQty)
             }
         }
+    }
+
+    val onToggleSaved: (Food) -> Unit = { food ->
+        if (savedFoods.contains(food.id)) savedFoods.remove(food.id)
+        else savedFoods.add(food.id)
     }
 
     // --- CALLBACKS ĐIỀU HƯỚNG CHUNG ---
@@ -79,7 +86,7 @@ fun NavGraph(navController: NavHostController, modifier: Modifier = Modifier) {
         lastOrderItems.addAll(itemsToOrder)
 
         val subtotal = itemsToOrder.sumOf { it.food.price * it.quantity }
-        val shippingFee = 15000
+        val shippingFee = if (subtotal > 0) 15000 else 0 // Phí ship chỉ tính khi có món
         val finalTotal = subtotal + shippingFee
 
         navController.navigate(Screen.PaymentMethodRoute.route.replace("{finalTotal}", finalTotal.toString())) {
@@ -112,22 +119,20 @@ fun NavGraph(navController: NavHostController, modifier: Modifier = Modifier) {
             HomeScreen(
                 navController = navController,
                 foods = foods,
-                // Đã sửa lỗi Argument type mismatch ở các lần trước
                 onDetailClick = { food -> onNavigateToDetail(food.id) },
-                onToggleSaved = { food ->
-                    if (savedFoods.contains(food.id)) savedFoods.remove(food.id)
-                    else savedFoods.add(food.id)
-                },
+                onToggleSaved = onToggleSaved,
                 savedFoodIds = savedFoods
             )
         }
 
+        // ⭐ Dùng OrderScreen vì nó có logic chỉnh sửa số lượng và ghi chú
         composable(Screen.Cart.route) {
             OrderScreen(
                 initialCartItems = cartItemsList,
                 onCheckoutClick = { items -> processOrderToPayment(items) },
                 onBackClick = onBack,
-                onNavigateToDetail = onNavigateToDetail
+                onNavigateToDetail = onNavigateToDetail,
+                onUpdateCart = onUpdateCart // Truyền callback cập nhật giỏ hàng chung
             )
         }
 
@@ -178,6 +183,16 @@ fun NavGraph(navController: NavHostController, modifier: Modifier = Modifier) {
             )
         }
 
+        // --- Màn hình Yêu thích (Favorites) ---
+        composable(Screen.Favorites.route) {
+            val savedFoodItems = foods.filter { savedFoods.contains(it.id) }
+            FavoritesScreen(
+                savedFoods = savedFoodItems,
+                onDetailClick = { food -> onNavigateToDetail(food.id) },
+                onToggleSaved = onToggleSaved
+            )
+        }
+
         // --- Các màn hình Profile ---
         composable(Screen.Profile.route) {
             ProfileScreen(onNavigateToScreen = { route -> navController.navigate(route) })
@@ -189,7 +204,6 @@ fun NavGraph(navController: NavHostController, modifier: Modifier = Modifier) {
         composable(Screen.Voucher.route) { VoucherScreen(onBack = onBack) }
         composable(Screen.Security.route) { SecurityScreen(onBack = onBack) }
         composable(Screen.AppSettings.route) { AppSettingsScreen(onBack = onBack) }
-        // ⭐ ĐÃ XÓA SUPPORT SCREEN KHỎI NAV GRAPH ⭐
         // composable(Screen.Support.route) { SupportScreen(onBack = onBack) }
 
         composable(Screen.Logout.route) {
@@ -198,14 +212,15 @@ fun NavGraph(navController: NavHostController, modifier: Modifier = Modifier) {
 
         composable(Screen.FoodDetail.route) { backStackEntry ->
             val id = backStackEntry.arguments?.getString("foodId") ?: ""
-            val food = foods.find { it.id == id }
-            food?.let {
+            val foodDetail = foods.find { it.id == id }
+            foodDetail?.let { currentFood ->
                 ProductDetailScreen(
-                    food = it,
+                    food = currentFood,
                     onBackClick = onBack,
                     onAddItemToCart = onAddToCart,
                     onNavigateToCart = { navController.navigate(Screen.Cart.route) },
-                    onNavigateToFavorites = { navController.navigate(Screen.Favorites.route) },
+                    onToggleSaved = { onToggleSaved(currentFood) },
+                    isSaved = savedFoods.contains(currentFood.id),
                     onBuyNow = onBuyNow
                 )
             }

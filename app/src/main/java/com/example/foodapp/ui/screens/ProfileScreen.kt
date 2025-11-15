@@ -2,6 +2,7 @@
 package com.example.foodapp.ui.screens.profile // Giữ nguyên package này
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image // ⭐ Cần thêm cho ảnh profile
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -21,18 +22,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.foodapp.ui.theme.PrimaryOrange
-
-// ✅ Thay java.time bằng ThreeTenABP
 import org.threeten.bp.Instant
 import org.threeten.bp.ZoneId
 import org.threeten.bp.format.DateTimeFormatter
-// ⚠️ XÓA: Bỏ import Locale không cần thiết ở đây
-// import java.util.Locale
-
+import com.example.foodapp.R
+import coil.compose.rememberAsyncImagePainter
 
 // --------------------------- MODEL ---------------------------
 data class ProfileMenuItem(
@@ -69,7 +68,7 @@ fun ProfileScreen(onNavigateToScreen: (String) -> Unit) {
                 .fillMaxSize()
                 .padding(padding)
                 .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp), // Tăng khoảng cách
+            verticalArrangement = Arrangement.spacedBy(12.dp),
             contentPadding = PaddingValues(bottom = 32.dp)
         ) {
             item {
@@ -117,7 +116,7 @@ fun ProfileScreen(onNavigateToScreen: (String) -> Unit) {
     }
 }
 
-// --------------------------- HEADER ---------------------------
+// --------------------------- HEADER---------------------------
 @Composable
 fun ProfileHeader(name: String, email: String, onEditProfileClick: () -> Unit) {
     Card(
@@ -132,13 +131,21 @@ fun ProfileHeader(name: String, email: String, onEditProfileClick: () -> Unit) {
                 .padding(vertical = 24.dp, horizontal = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+
+            val imageResId = com.example.foodapp.R.drawable.profile_burger
+
             Box(
-                modifier = Modifier.size(100.dp).clip(CircleShape) // Tăng size ảnh
-                    .background(Color.LightGray.copy(alpha = 0.5f))
-                    .border(3.dp, PrimaryOrange, CircleShape), // Tăng độ dày border
+                modifier = Modifier.size(120.dp).clip(CircleShape)
+                    .border(3.dp, PrimaryOrange, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.Person, null, tint = Color.DarkGray, modifier = Modifier.size(55.dp))
+
+                Image(
+                    painter = rememberAsyncImagePainter(model = imageResId),
+                    contentDescription = "Ảnh đại diện Burger King",
+                    modifier = Modifier.fillMaxSize().clip(CircleShape),
+                    contentScale = ContentScale.Crop // Crop ảnh cho vừa với hình tròn
+                )
             }
             Spacer(Modifier.height(10.dp))
             Text(name, fontWeight = FontWeight.ExtraBold, fontSize = 22.sp) // Tăng size chữ
@@ -146,7 +153,7 @@ fun ProfileHeader(name: String, email: String, onEditProfileClick: () -> Unit) {
             Spacer(Modifier.height(16.dp))
             Button(
                 onClick = onEditProfileClick,
-                modifier = Modifier.width(200.dp).height(45.dp), // Tăng kích thước nút
+                modifier = Modifier.width(200.dp).height(45.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = PrimaryOrange)
             ) {
@@ -155,7 +162,6 @@ fun ProfileHeader(name: String, email: String, onEditProfileClick: () -> Unit) {
         }
     }
 }
-
 // --------------------------- NAV ITEM ---------------------------
 @Composable
 fun ProfileNavigationItem(item: ProfileMenuItem, onClick: () -> Unit) {
@@ -424,7 +430,6 @@ fun DeliveryAddressScreen(onBack: () -> Unit) {
             "Văn phòng: 02 Võ Oanh, Phường 25, Bình Thạnh, Thành phố Hồ Chí Minh"
         )
     }
-    // SỬA CẢNH BÁO 2
     var defaultAddressIndex by remember { mutableIntStateOf(0) }
 
     Scaffold(

@@ -23,14 +23,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
-// THÊM IMPORT THIẾT YẾU
-import com.example.foodapp.data.CartItem // Đảm bảo đúng đường dẫn package của CartItem
-
-// Màu Primary
+import com.example.foodapp.data.CartItem
 import com.example.foodapp.ui.theme.PrimaryOrange
-
-// Hàm format tiền
 import com.example.foodapp.utils.toVND
 
 
@@ -75,13 +69,13 @@ fun CartScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            if (cartItems.isEmpty()) EmptyCartMessage()
+
+            if (cartItems.isEmpty()) CartEmptyMessage()
             else LazyColumn(
                 modifier = Modifier.weight(1f),
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // SỬA LỖI: Key dùng item.food.id (item là CartItem)
                 items(cartItems, key = { it.food.id }) { item ->
                     CartItemRow(item = item, onUpdateCart = onUpdateCart)
                     Divider(color = Color.LightGray, thickness = 1.dp)
@@ -93,10 +87,10 @@ fun CartScreen(
 
 
 /**
- * Thông báo giỏ hàng trống
+ * Thông báo giỏ hàng trống (ĐÃ ĐỔI TÊN HÀM)
  */
 @Composable
-fun EmptyCartMessage() {
+fun CartEmptyMessage() {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -124,17 +118,15 @@ fun EmptyCartMessage() {
 @Composable
 fun CartItemRow(
     item: CartItem,
-    onUpdateCart: (CartItem, Int) -> Unit // ĐÃ SỬA
+    onUpdateCart: (CartItem, Int) -> Unit
 ) {
     Row(
-        // ... (Phần bố cục giữ nguyên)
         modifier = Modifier
             .fillMaxWidth()
             .height(80.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            // ... (Phần hiển thị tên và giá giữ nguyên)
             Text(
                 text = item.food.name,
                 fontWeight = FontWeight.SemiBold,

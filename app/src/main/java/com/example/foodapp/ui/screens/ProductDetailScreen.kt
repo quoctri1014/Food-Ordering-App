@@ -11,7 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable // Import này là cần thiết cho rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -27,9 +27,9 @@ import androidx.compose.ui.unit.sp
 import com.example.foodapp.R
 import com.example.foodapp.data.Food as ModelFood
 import com.example.foodapp.utils.toVND
-import java.util.Locale // THÊM IMPORT LOCALE CHO String.format
+import java.util.Locale
 
-// Giả định màu PrimaryOrange đã được định nghĩa
+// Giả định PrimaryOrange và toVND được import thành công
 val PrimaryOrange = Color(0xFFFF6B3A)
 
 
@@ -40,12 +40,15 @@ fun ProductDetailScreen(
     onBackClick: () -> Unit,
     onAddItemToCart: (ModelFood, Int) -> Unit,
     onNavigateToCart: () -> Unit,
-    onNavigateToFavorites: () -> Unit,
+    onToggleSaved: (ModelFood) -> Unit, // ĐÃ SỬA: Nhận ModelFood
+    isSaved: Boolean,
     onBuyNow: (ModelFood, Int) -> Unit
 ) {
-    // SỬA LỖI 1: Dùng rememberSaveable và mutableIntStateOf
     var quantity by rememberSaveable { mutableIntStateOf(1) }
-    val drawableId = food.imageUrl // Int ID
+    val drawableId = food.imageUrl
+
+    // ⭐ XÁC ĐỊNH MÀU ICON
+    val favoriteIconColor = if (isSaved) Color.Red else Color.Gray
 
     Scaffold(
         topBar = {
@@ -56,9 +59,14 @@ fun ProductDetailScreen(
                         Icon(Icons.Filled.ArrowBack, "Back")
                     }
                 },
+                // ⭐ SỬ DỤNG onToggleSaved CHO HÀNH ĐỘNG NÚT YÊU THÍCH
                 actions = {
-                    IconButton(onClick = onNavigateToFavorites) {
-                        Icon(Icons.Filled.FavoriteBorder, "Favorite")
+                    IconButton(onClick = { onToggleSaved(food) }) { // ĐÃ SỬA: Gọi onToggleSaved và truyền 'food' vào
+                        Icon(
+                            imageVector = if (isSaved) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                            contentDescription = "Favorite",
+                            tint = favoriteIconColor
+                        )
                     }
                 }
             )
@@ -83,7 +91,6 @@ fun ProductDetailScreen(
             ) {
                 if (drawableId != 0) {
                     Image(
-                        // SỬ DỤNG food.imageUrl (drawableId) TRỰC TIẾP
                         painter = painterResource(id = food.imageUrl),
                         contentDescription = food.name,
                         contentScale = ContentScale.Crop,
@@ -96,14 +103,13 @@ fun ProductDetailScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // --- 2. Tên món ăn & Icon Yêu thích ---
+            // --- 2. Tên món ăn ---
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(food.name, fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-                Icon(Icons.Filled.FavoriteBorder, contentDescription = "Favorite", modifier = Modifier.size(28.dp), tint = Color.Gray)
             }
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -112,15 +118,16 @@ fun ProductDetailScreen(
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Filled.Star, null, tint = Color(0xFFFFC107), modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(4.dp))
-                // SỬA LỖI 2: Dùng String.format có Locale
                 Text(String.format(Locale.getDefault(), "%.1f", food.rating), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Color.DarkGray)
                 Spacer(Modifier.width(16.dp))
 
+                // Giả định R.drawable.ic_clock tồn tại
                 Icon(painterResource(id = R.drawable.ic_clock), null, tint = PrimaryOrange, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(4.dp))
                 Text("${food.time} phút", fontSize = 15.sp, color = Color.Gray)
                 Spacer(Modifier.width(16.dp))
 
+                // Giả định R.drawable.ic_calories tồn tại
                 Icon(painterResource(id = R.drawable.ic_calories), null, tint = Color.Red, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(4.dp))
                 Text("${food.kCal} calo", fontSize = 15.sp, color = Color.Gray)

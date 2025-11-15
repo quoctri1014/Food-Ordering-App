@@ -207,7 +207,8 @@ fun HomeScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("App Food", fontWeight = FontWeight.Bold, color = PrimaryOrange) },
+
+                title = { Text("BURGERKING", fontWeight = FontWeight.ExtraBold, color = PrimaryOrange) },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White),
                 actions = {
                     // Nút Giỏ hàng
@@ -226,13 +227,15 @@ fun HomeScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues),
-            contentPadding = PaddingValues(bottom = 80.dp) // Điều chỉnh padding sau TopBar
+            contentPadding = PaddingValues(bottom = 80.dp)
         ) {
 
             item {
                 Text(
                     text = "🍔 Thực đơn hôm nay",
-                    modifier = Modifier.padding(horizontal = 16.dp).padding(top = 16.dp),
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp)
+                        .padding(top = 16.dp),
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold
                 )

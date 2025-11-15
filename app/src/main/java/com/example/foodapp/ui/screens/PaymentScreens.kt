@@ -25,8 +25,6 @@ import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import com.example.foodapp.R
 import android.widget.Toast
-
-// ⭐ FIX 1: Import PaymentMethod, PaymentInfo, và các màu từ package model chung ⭐
 import com.example.foodapp.data.model.PaymentMethod
 import com.example.foodapp.data.model.PaymentInfo
 import com.example.foodapp.data.model.PrimaryAccentColor
@@ -38,7 +36,7 @@ import com.example.foodapp.utils.toVND // Giữ lại import này
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PaymentMethodScreen(
-    // ⭐ Đã sửa: Thay NavController bằng callback điều hướng trong NavGraph ⭐
+
     finalTotalAmount: Int = 450000,
     onOrderCompleted: (PaymentInfo) -> Unit,
     onBackClick: () -> Unit,
@@ -148,7 +146,6 @@ fun PaymentMethodScreen(
                 onClick = {
                     if (isFormValid) {
                         if (info.method == PaymentMethod.QR_BIDV || info.method == PaymentMethod.MOMO) {
-                            // ⭐ LƯU THÔNG TIN TẠM THỜI TRƯỚC KHI ĐI TIẾP ⭐
                             onTempPaymentInfoSaved(info)
                             onNavigateToQrDetail(info.method.methodId, finalTotalAmount, info.fullName)
                         } else {
@@ -193,8 +190,8 @@ fun QrPaymentDetailScreen(
 
     // Dữ liệu giả định QR/Bank Info
     val bankName = if (isMomo) "Ví điện tử Momo" else "Ngân hàng: BIDV"
-    val accountName = if (isMomo) "Nguyễn Văn A" else "Nguyễn Thị Thanh Vân"
-    val accountNumber = if (isMomo) "0912-XXX-XXX" else "123456789"
+    val accountName = if (isMomo) "Nguyễn Thị Thanh Vân" else "Nguyễn Thị Thanh Vân"
+    val accountNumber = if (isMomo) "0908082005" else "0908082005"
     // ⭐ SỬA LỖI KHÔNG TÌM THẤY HÌNH ẢNH: Đảm bảo R.drawable.qr_momo và R.drawable.qr_payment tồn tại ⭐
     val qrImageRes = if (isMomo) R.drawable.qr_momo else R.drawable.qr_payment
 

@@ -9,7 +9,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Home
 import androidx.compose.runtime.*
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
@@ -20,17 +19,15 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import com.example.foodapp.data.CartItem
 import com.example.foodapp.ui.theme.PrimaryOrange
+import com.example.foodapp.utils.toVND
 
 
 import androidx.compose.runtime.toMutableStateList
 
 val AppFoodTotalRed = Color(0xFFD32F2F)
-
-
 
 data class OrderItemState(
     val cartItem: CartItem,
@@ -44,9 +41,11 @@ fun OrderScreen(
     initialCartItems: List<CartItem>,
     onCheckoutClick: (List<CartItem>) -> Unit,
     onBackClick: () -> Unit,
-    onNavigateToDetail: (String) -> Unit // Thêm callback navigate
+    onNavigateToDetail: (String) -> Unit,
+
+    onUpdateCart: (CartItem, Int) -> Unit
 ) {
-    // TẠO TRẠNG THÁI RIÊNG cho màn hình Order, bao gồm cả Ghi chú.
+
     val orderItemStates: SnapshotStateList<OrderItemState> = remember {
         initialCartItems.map { item ->
             OrderItemState(
@@ -57,14 +56,36 @@ fun OrderScreen(
         }.toMutableStateList()
     }
 
-    // Loại bỏ các món có số lượng bằng 0 (nếu có)
+
+    LaunchedEffect(initialCartItems) {
+        val currentNotesAndQty = orderItemStates.associate { it.cartItem.food.id to Pair(it.note, it.quantity) }
+
+        if (initialCartItems.size != orderItemStates.size || initialCartItems.any { item ->
+                val currentState = currentNotesAndQty[item.food.id]
+                currentState == null || currentState.second != item.quantity
+            }) {
+            orderItemStates.clear()
+            orderItemStates.addAll(initialCartItems.map { item ->
+                val (note, _) = currentNotesAndQty[item.food.id] ?: Pair(item.note, item.quantity)
+                OrderItemState(
+                    cartItem = item,
+                    note = note,
+                    quantity = item.quantity
+                )
+            })
+        }
+    }
+
+
     val currentOrderItems = remember(orderItemStates.size) {
         orderItemStates.filter { it.quantity > 0 }
     }
 
-    // Tính toán lại tổng tiền dựa trên trạng thái hiện tại
     val subtotal = currentOrderItems.sumOf { it.cartItem.food.price * it.quantity }
-    val shippingFee = 15000
+
+
+    val shippingFee = if (subtotal > 0) 15000 else 0
+
     val discount = 0
     val finalTotal = subtotal + shippingFee - discount
 
@@ -91,55 +112,66 @@ fun OrderScreen(
                 .padding(horizontal = 16.dp, vertical = 8.dp)
         ) {
 
-            // --- Danh sách món ăn ---
-            currentOrderItems.forEach { itemState ->
+            if (currentOrderItems.isEmpty()) {
+                EmptyCartMessage()
+            } else {
+                // --- Danh sách món ăn ---
+                currentOrderItems.forEach { itemState ->
 
-                OrderItemCard(
+                    OrderItemCard(
+                        item = itemState.cartItem.copy(quantity = itemState.quantity, note = itemState.note),
+                        note = itemState.note,
+                        onNoteChange = { itemState.note = it },
+                        onQuantityChange = { change ->
+                            val index = orderItemStates.indexOf(itemState)
+                            if (index != -1) {
+                                val newQuantity = itemState.quantity + change
 
-                    item = itemState.cartItem.copy(quantity = itemState.quantity, note = itemState.note),
-                    note = itemState.note,
-                    onNoteChange = { itemState.note = it },
-                    onQuantityChange = { change ->
-                        val index = orderItemStates.indexOf(itemState)
-                        if (index != -1) {
-                            val newQuantity = itemState.quantity + change
-                            if (newQuantity <= 0) {
-                                orderItemStates.removeAt(index)
-                            } else {
-                                // Cập nhật số lượng trực tiếp
-                                orderItemStates[index] = itemState.copy(quantity = newQuantity)
+                                // 1. Cập nhật state nội bộ
+                                if (newQuantity <= 0) {
+                                    orderItemStates.removeAt(index)
+                                } else {
+                                    orderItemStates[index] = itemState.copy(quantity = newQuantity)
+                                }
+
+                                // 2. GỌI CALLBACK ĐỂ CẬP NHẬT GIỎ HÀNG CHUNG
+                                onUpdateCart(itemState.cartItem, change)
                             }
-                        }
-                    },
-                    onDetailClick = { onNavigateToDetail(itemState.cartItem.food.id) }
+                        },
+                        onDetailClick = { onNavigateToDetail(itemState.cartItem.food.id) }
+                    )
+                    Spacer(Modifier.height(12.dp))
+                }
+
+                Spacer(Modifier.height(8.dp))
+
+                // --- Tổng cộng ---
+                TotalSummaryCard(
+                    cartItems = currentOrderItems.map { it.cartItem.copy(quantity = it.quantity) },
+                    shippingFee = shippingFee,
+                    discount = discount
                 )
-                Spacer(Modifier.height(12.dp))
-            }
 
-            Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(24.dp))
 
-            // --- Tổng cộng ---
-            TotalSummaryCard(cartItems = currentOrderItems.map { it.cartItem.copy(quantity = it.quantity) })
-
-            Spacer(Modifier.height(24.dp))
-
-            // --- Nút Xác nhận -> CHUYỂN ĐẾN MÀN HÌNH NHẬP THÔNG TIN/THANH TOÁN ---
-            Button(
-                onClick = {
-                    val finalCart = currentOrderItems.map { state ->
-                        state.cartItem.copy(
-                            quantity = state.quantity,
-                            note = state.note
-                        )
-                    }
-                    onCheckoutClick(finalCart)
-                },
-                modifier = Modifier.fillMaxWidth().height(55.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = PrimaryOrange),
-                shape = RoundedCornerShape(14.dp),
-                enabled = currentOrderItems.isNotEmpty()
-            ) {
-                Text("Xác nhận & Thanh toán (${finalTotal.toVND()})", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                // --- Nút Xác nhận -> CHUYỂN ĐẾN MÀN HÌNH NHẬP THÔNG TIN/THANH TOÁN ---
+                Button(
+                    onClick = {
+                        val finalCart = currentOrderItems.map { state ->
+                            state.cartItem.copy(
+                                quantity = state.quantity,
+                                note = state.note
+                            )
+                        }
+                        onCheckoutClick(finalCart)
+                    },
+                    modifier = Modifier.fillMaxWidth().height(55.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryOrange),
+                    shape = RoundedCornerShape(14.dp),
+                    enabled = currentOrderItems.isNotEmpty()
+                ) {
+                    Text("Xác nhận & Thanh toán (${finalTotal.toVND()})", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                }
             }
         }
     }
@@ -151,6 +183,7 @@ fun OrderItemCard(
     item: CartItem,
     note: String,
     onNoteChange: (String) -> Unit,
+
     onQuantityChange: (Int) -> Unit,
     onDetailClick: () -> Unit
 ) {
@@ -188,10 +221,12 @@ fun OrderItemCard(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.background(Color(0xFFEFEFEF), RoundedCornerShape(18.dp))
                     ) {
+                        // Nút GIẢM (change = -1)
                         IconButton(onClick = { onQuantityChange(-1) }, modifier = Modifier.size(30.dp)) {
                             Text("-", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.Black)
                         }
                         Text(item.quantity.toString(), fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(horizontal = 4.dp))
+                        // Nút TĂNG (change = +1)
                         IconButton(onClick = { onQuantityChange(1) }, modifier = Modifier.size(30.dp)) {
                             Text("+", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.Black)
                         }
@@ -218,11 +253,10 @@ fun OrderItemCard(
     }
 }
 
+
 @Composable
-fun TotalSummaryCard(cartItems: List<CartItem>) {
+fun TotalSummaryCard(cartItems: List<CartItem>, shippingFee: Int, discount: Int) {
     val subtotal = cartItems.sumOf { it.food.price * it.quantity }
-    val shippingFee = 15000
-    val discount = 0
     val total = subtotal + shippingFee - discount
 
     Card(
@@ -244,7 +278,7 @@ fun TotalSummaryCard(cartItems: List<CartItem>) {
             }
             Spacer(Modifier.height(4.dp))
 
-            // Shipping
+            // Shipping (Chỉ hiển thị khi có món hàng)
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                 Text("Phí giao hàng:", fontSize = 15.sp, color = Color.DarkGray)
                 Text(shippingFee.toVND(), fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
@@ -265,5 +299,22 @@ fun TotalSummaryCard(cartItems: List<CartItem>) {
                 Text(total.toVND(), fontWeight = FontWeight.ExtraBold, color = AppFoodTotalRed, fontSize = 18.sp)
             }
         }
+    }
+}
+
+@Composable
+fun EmptyCartMessage() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        // Icon (thêm nếu bạn muốn)
+        Spacer(modifier = Modifier.height(24.dp))
+        Text("Giỏ hàng trống", fontSize = 20.sp, fontWeight = FontWeight.SemiBold, color = Color.Gray)
+        Spacer(modifier = Modifier.height(8.dp))
+        Text("Hãy thêm một vài món ăn ngon vào giỏ hàng của bạn!", color = Color.DarkGray)
     }
 }

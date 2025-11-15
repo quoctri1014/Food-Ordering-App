@@ -24,12 +24,10 @@ import androidx.compose.ui.unit.sp
 import coil.compose.rememberAsyncImagePainter
 import com.example.foodapp.data.CartItem
 import kotlinx.coroutines.delay
-
-// ⭐ FIX 1: Import PaymentInfo, PrimaryOrange và AppFoodTotalRed từ package model chung ⭐
 import com.example.foodapp.data.model.PaymentInfo
 import com.example.foodapp.data.model.PrimaryOrange
 import com.example.foodapp.data.model.AppFoodTotalRed
-import com.example.foodapp.utils.toVND // Giữ lại import này
+import com.example.foodapp.utils.toVND
 
 // --- OrderTrackingScreen Composable ---
 @OptIn(ExperimentalMaterial3Api::class)
@@ -50,7 +48,7 @@ fun OrderTrackingScreen(
     // Giả lập tiến trình tự động
     LaunchedEffect(Unit) {
         while (currentStep < steps.size - 1) {
-            delay(10000)
+            delay(15000)
             currentStep++
         }
     }
