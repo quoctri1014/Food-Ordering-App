@@ -14,17 +14,18 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavDestination.Companion.hierarchy
 
-import com.example.foodapp.data.model.Screen
+import com.example.foodapp.navigation.Screen // Import đúng Screen object
 import com.example.foodapp.ui.theme.PrimaryOrange
 
 // Định nghĩa các mục cho Bottom Bar
 data class BottomBarScreen(val route: String, val label: String, val icon: ImageVector)
 
+// CHÍNH XÁC: Sử dụng các hằng số string route từ Screen object
 val BottomBarItems = listOf(
-    BottomBarScreen(Screen.Home.route, "Trang Chủ", Icons.Default.Home),
-    BottomBarScreen(Screen.Favorites.route, "Yêu Thích", Icons.Default.Favorite),
-    BottomBarScreen(Screen.Cart.route, "Giỏ Hàng", Icons.Default.ShoppingCart),
-    BottomBarScreen(Screen.Profile.route, "Tài Khoản", Icons.Default.Person)
+    BottomBarScreen(Screen.Home, "Trang Chủ", Icons.Default.Home),
+    BottomBarScreen(Screen.Favorites, "Yêu Thích", Icons.Default.Favorite),
+    BottomBarScreen(Screen.Cart, "Giỏ Hàng", Icons.Default.ShoppingCart),
+    BottomBarScreen(Screen.Profile, "Tài Khoản", Icons.Default.Person)
 )
 
 @Composable
@@ -41,7 +42,7 @@ fun BottomNavBar(navController: NavHostController) {
     ) {
         BottomBarItems.forEach { screen ->
 
-            // Logic khớp route
+            // Logic khớp route: So sánh route hiện tại với route được định nghĩa
             val isSelected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
 
             NavigationBarItem(
@@ -60,6 +61,7 @@ fun BottomNavBar(navController: NavHostController) {
                 },
                 selected = isSelected,
                 onClick = {
+                    // Navigate bằng hằng số route chính xác
                     navController.navigate(screen.route) {
 
                         popUpTo(navController.graph.findStartDestination().id) {
@@ -67,7 +69,6 @@ fun BottomNavBar(navController: NavHostController) {
                         }
 
                         launchSingleTop = true
-                        // Khôi phục trạng thái khi điều hướng lại
                         restoreState = true
                     }
                 },

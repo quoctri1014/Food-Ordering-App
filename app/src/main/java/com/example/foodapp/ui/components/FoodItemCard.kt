@@ -22,7 +22,6 @@ import androidx.compose.ui.unit.sp
 import com.example.foodapp.data.Food
 import java.text.NumberFormat
 import java.util.*
-import androidx.compose.ui.platform.LocalContext
 
 
 val PrimaryOrange = Color(0xFFFF9800)

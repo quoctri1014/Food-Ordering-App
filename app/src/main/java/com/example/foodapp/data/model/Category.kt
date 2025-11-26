@@ -9,8 +9,7 @@ typealias Food = DataFood
 typealias CartItem = DataCartItem
 
 @Suppress("unused")
-val mockFoodsBridge get() = com.example.foodapp.data.mockFoods
-
+val mockFoodsBridge get() = com.example.foodapp.data.MockData.mockFoods
 
 data class Category(
     val id: String,

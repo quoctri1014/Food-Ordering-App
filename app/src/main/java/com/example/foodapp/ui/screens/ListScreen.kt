@@ -14,28 +14,28 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.layout.ContentScale
 import androidx.navigation.NavController
+import com.example.foodapp.data.Category as DataModelCategory
 import com.example.foodapp.data.Food
-import com.example.foodapp.data.mockFoods
+import com.example.foodapp.data.MockData
 import com.example.foodapp.ui.components.CategoriesSection
 import com.example.foodapp.ui.theme.PrimaryOrange
-import com.example.foodapp.data.Category as DataModelCategory
-import com.example.foodapp.ui.components.SearchBar
 import java.util.Locale
 
-// SỬA LỖI: Thêm Locale vào String.format
+// Hàm format tiền Việt
 fun Int.toVND(): String {
-    return String.format(Locale.getDefault(), "%,d VNĐ", this)
+    return String.format(Locale("vi", "VN"), "%,d VNĐ", this)
 }
 
-
-// --- COMPONENT: SearchBar (Giữ nguyên) ---
+// --- COMPONENT: SearchBar ---
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchBar(onSearch: (String) -> Unit) {
     var text by remember { mutableStateOf("") }
@@ -47,9 +47,7 @@ fun SearchBar(onSearch: (String) -> Unit) {
         },
         label = { Text("Tìm kiếm món ăn...") },
         leadingIcon = { Icon(Icons.Filled.Search, contentDescription = "Search") },
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
         shape = RoundedCornerShape(12.dp),
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = PrimaryOrange,
@@ -58,22 +56,21 @@ fun SearchBar(onSearch: (String) -> Unit) {
     )
 }
 
-// ------------------- COMPONENT: FoodItemCard (Giữ nguyên) -------------------
+// --- COMPONENT: FoodItemCard ---
 @Composable
 fun FoodItemCard(
     food: Food,
-    onDetailClick: () -> Unit,
+    onDetailClick: (String) -> Unit,
     onToggleSaved: () -> Unit,
     isSaved: Boolean,
     modifier: Modifier = Modifier
 ) {
     val drawableId = food.imageUrl
-
     Card(
         modifier = modifier
             .fillMaxWidth()
             .height(110.dp)
-            .clickable { onDetailClick() },
+            .clickable { onDetailClick(food.id) },
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White)
@@ -82,7 +79,7 @@ fun FoodItemCard(
             modifier = Modifier.padding(10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Phần 1: Hình ảnh
+            // Ảnh món ăn
             Box(
                 modifier = Modifier
                     .size(90.dp)
@@ -101,144 +98,112 @@ fun FoodItemCard(
                     Text("No Img", fontSize = 10.sp, color = Color.DarkGray)
                 }
             }
-
             Spacer(modifier = Modifier.width(16.dp))
 
-            // Phần 2: Tên, Rating, Time/KCal
+            // Thông tin món ăn
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    food.name,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 17.sp,
-                    maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                )
+                Text(food.name, fontWeight = FontWeight.Bold, fontSize = 17.sp, maxLines = 1)
                 Spacer(Modifier.height(4.dp))
-
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Filled.Star,
-                        contentDescription = "Rating",
-                        tint = Color(0xFFFFC107),
-                        modifier = Modifier.size(16.dp)
-                    )
+                    Icon(Icons.Filled.Star, null, tint = Color(0xFFFFC107), modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(4.dp))
-                    // SỬA LỖI: Thêm Locale vào String.format
-                    Text(
-                        String.format(Locale.getDefault(), "%.1f", food.rating),
-                        fontSize = 14.sp,
-                        color = Color.DarkGray,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                    Text(String.format(Locale.US, "%.1f", food.rating), fontSize = 14.sp, color = Color.DarkGray)
                 }
                 Spacer(Modifier.height(4.dp))
-
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(Icons.Default.Schedule, contentDescription = "Time", tint = Color.Gray, modifier = Modifier.size(14.dp))
-                    Text("${food.time} mins", fontSize = 12.sp, color = Color.Gray)
-
-                    Icon(Icons.Default.LocalFireDepartment, contentDescription = "Calories", tint = PrimaryOrange, modifier = Modifier.size(14.dp))
-                    Text("${food.kCal} kCal", fontSize = 12.sp, color = Color.Gray)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Schedule, null, tint = Color.Gray, modifier = Modifier.size(14.dp))
+                    Text(" ${food.time}p", fontSize = 12.sp, color = Color.Gray)
+                    Spacer(Modifier.width(8.dp))
+                    Icon(Icons.Default.LocalFireDepartment, null, tint = PrimaryOrange, modifier = Modifier.size(14.dp))
+                    Text(" ${food.kCal} kcal", fontSize = 12.sp, color = Color.Gray)
                 }
             }
 
-            // Phần 3: Giá và Nút Yêu Thích
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxHeight()
-            ) {
+            // Giá tiền & Nút Like
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxHeight()) {
                 IconButton(onClick = onToggleSaved, modifier = Modifier.size(36.dp)) {
                     Icon(
-                        imageVector = Icons.Filled.Favorite,
-                        contentDescription = "Yêu thích",
-                        tint = if (isSaved) Color.Red else Color.LightGray,
-                        modifier = Modifier.size(24.dp)
+                        imageVector = if (isSaved) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                        contentDescription = "Save",
+                        tint = if (isSaved) Color.Red else Color.LightGray
                     )
                 }
-
                 Spacer(Modifier.height(4.dp))
-
-                Text(
-                    food.price.toVND(),
-                    fontWeight = FontWeight.ExtraBold,
-                    fontSize = 16.sp,
-                    color = PrimaryOrange
-                )
+                Text(food.price.toVND(), fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, color = PrimaryOrange)
             }
         }
     }
 }
 
-
-// --- MÀN HÌNH CHÍNH ---
+// --- MÀN HÌNH DANH SÁCH (LIST SCREEN) ---
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(
+fun ListScreen(
     navController: NavController,
-    foods: List<Food> = mockFoods,
-    onDetailClick: (Food) -> Unit,
+    foods: List<Food> = MockData.mockFoods,
+    onDetailClick: (String) -> Unit,
     onToggleSaved: (Food) -> Unit,
-    savedFoodIds: List<String>
+    savedFoodIds: List<String>,
+    cartItemCount: Int
 ) {
     val categories = listOf(
-        DataModelCategory("C1", "🍔", "Burger", Color(0xFFFFE0B2)),
-        DataModelCategory("C2", "🍕", "Pizza", Color(0xFFFFCCBC)),
-        DataModelCategory("C3", "🍣", "Sushi", Color(0xFFB2DFDB)),
-        DataModelCategory("C4", "🥗", "Salad", Color(0xFFC8E6C9)),
-        DataModelCategory("C5", "🍜", "Mì/Phở", Color(0xFFB3E5FC)),
-        DataModelCategory("C6", "☕", "Đồ Uống", Color(0xFFD7CCC8))
+        DataModelCategory("C1", "🍔", "Burger", 0xFFFFE0B2L),
+        DataModelCategory("C2", "🍕", "Pizza", 0xFFFFCCBCL),
+        DataModelCategory("C3", "🍣", "Sushi", 0xFFB2DFDBL),
+        DataModelCategory("C4", "🥗", "Salad", 0xFFC8E6C9L),
+        DataModelCategory("C5", "🍜", "Mì/Phở", 0xFFB3E5FCL),
+        DataModelCategory("C6", "☕", "Đồ Uống", 0xFFD7CCC8L)
     )
 
     var selectedCategoryId by remember { mutableStateOf<String?>(null) }
     var searchQuery by remember { mutableStateOf("") }
 
-    val filteredFoods = foods
-        .filter { it.name.contains(searchQuery, ignoreCase = true) }
-        .filter {
-            if (searchQuery.isNotEmpty()) {
-                true
-            } else selectedCategoryId == null || it.categoryId == selectedCategoryId
-        }
+    val filteredFoods = foods.filter { food ->
+        val matchesSearch = food.name.contains(searchQuery, ignoreCase = true)
+        val matchesCategory = selectedCategoryId == null || food.categoryId == selectedCategoryId
+        matchesSearch && matchesCategory
+    }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("App Food", fontWeight = FontWeight.Bold, color = PrimaryOrange) },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White),
-                actions = {
-                    // Nút Giỏ hàng
-                    IconButton(onClick = { navController.navigate("cart") }) {
-                        Icon(Icons.Default.ShoppingCart, contentDescription = "Giỏ hàng", tint = PrimaryOrange)
-                    }
-                    // Nút Yêu thích (hoặc Account)
-                    IconButton(onClick = { navController.navigate("profile") }) {
-                        Icon(Icons.Default.Person, contentDescription = "Account", tint = Color.Black)
-                    }
-                }
-            )
-        }
-    ) { paddingValues ->
-        LazyColumn(
+    Column(modifier = Modifier.fillMaxSize().background(Color.White)) {
+
+        // --- Header Tùy chỉnh (ĐÃ SỬA) ---
+        // Đổi từ Row sang Box để dễ căn giữa và xếp chồng
+        Box(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
-            contentPadding = PaddingValues(bottom = 80.dp) // Điều chỉnh padding sau TopBar
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
-
-            item {
-                Text(
-                    text = "🍔 Thực đơn hôm nay",
-                    modifier = Modifier.padding(horizontal = 16.dp).padding(top = 16.dp),
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(16.dp))
+            // 1. Nút Back (Nằm bên trái)
+            IconButton(
+                onClick = { navController.popBackStack() },
+                modifier = Modifier.align(Alignment.CenterStart)
+            ) {
+                Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.Black)
             }
 
+            // 2. Chữ BURGERKING (Căn giữa màn hình)
+            Text(
+                text = "BURGERKING",
+                fontWeight = FontWeight.ExtraBold,
+                color = PrimaryOrange,
+                fontSize = 24.sp,
+                modifier = Modifier.align(Alignment.Center)
+            )
+
+            // Đã xóa các icon bên phải
+        }
+
+        Text(
+            text = "🍔 Thực đơn hôm nay",
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold
+        )
+
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(bottom = 16.dp)
+        ) {
             item {
                 SearchBar(onSearch = { query ->
                     searchQuery = query
@@ -247,16 +212,15 @@ fun HomeScreen(
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
-            // --- Phần Danh mục ---
             item {
                 CategoriesSection(
                     categories = categories,
                     selectedCategoryId = selectedCategoryId,
-                    onCategoryClick = { categoryClicked ->
-                        if (categoryClicked.id == selectedCategoryId) {
+                    onCategoryClick = { category ->
+                        if (category.id == selectedCategoryId) {
                             selectedCategoryId = null
                         } else {
-                            selectedCategoryId = categoryClicked.id
+                            selectedCategoryId = category.id
                             searchQuery = ""
                         }
                     }
@@ -264,12 +228,10 @@ fun HomeScreen(
                 Spacer(modifier = Modifier.height(20.dp))
             }
 
-
-            // --- Phần Danh sách món ăn ---
             items(filteredFoods) { food ->
                 FoodItemCard(
                     food = food,
-                    onDetailClick = { onDetailClick(food) },
+                    onDetailClick = onDetailClick,
                     onToggleSaved = { onToggleSaved(food) },
                     isSaved = savedFoodIds.contains(food.id),
                     modifier = Modifier.padding(horizontal = 16.dp)
