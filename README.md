@@ -1,4 +1,4 @@
-Link figma về đồ án  : https://www.figma.com/design/Ba0SdiExeOHRFGFhxh665c/Untitled?node-id=0-1&p=f&t=57RVqaNAqdWtAvDg-0
+Link figma thiết kế đô án : https://www.figma.com/design/Ba0SdiExeOHRFGFhxh665c/Untitled?node-id=0-1&p=f&t=57RVqaNAqdWtAvDg-0
 
 Đồ Án Hệ Thống Đặt Đồ Ăn Trực Tuyến - Food Ordering App (BurgerKing)
 
