@@ -67,7 +67,7 @@ B. Đối Với Quản Trị Viên (Web Admin)
 
 4. Hướng Dẫn Cài Đặt Cơ Bản
    
-- Mobile App: Cài file APK vào máy Android.
+- Mobile App: Cài file APK vào máy Android :https://github.com/quoctri1014/Food-Ordering-App/releases
   
 - Web Admin: Truy cập đường dẫn: https://foodapp-server-txfk.onrender.com/
   
