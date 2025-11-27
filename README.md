@@ -4,9 +4,10 @@ Link figma thiết kế đô án : https://www.figma.com/design/Ba0SdiExeOHRFGFh
 
 1. Giới thiệu
 Hệ thống Food Ordering App là giải pháp đặt đồ ăn trực tuyến toàn diện, bao gồm Ứng dụng di động (Android) dành cho khách hàng và Website quản trị (Admin Dashboard) dành cho cửa hàng.
-Hệ thống được vận hành bởi Backend Server mạnh mẽ (Node.js) triển khai trên nền tảng Render, giúp đồng bộ dữ liệu thời gian thực giữa khách hàng và nhà quản lý, đảm bảo quy trình gọi món và xử lý đơn hàng diễn ra thông suốt.
+Hệ thống được vận hành bởi Backend Server mạnh mẽ (Node.js) triển khai trên nền tảng Render, giúp đồng bộ dữ liệu thời gian thực giữa khách hàng và nhà quản lý, đảm bảo quy trình gọi món và xử lý đơn hàng diễn ra thông suốt và gửi mã xác thực OTP về email khách hàng nhanh chống.
+Hê thống firebase xác thực người dùng và lưu trữ dữ liệu giúp cho dễ dàng sử lí khi gặp vấn đề và tận dụng được code một cách tối đa với mô hình MVVN .
 
-2. Tính Năng Chính Của Hệ Thống
+3. Tính Năng Chính Của Hệ Thống
 
 A. Đối Với Khách Hàng (Android App)
 
