@@ -1,6 +1,6 @@
 package com.example.foodapp.ui.screens
 
-import com.example.foodapp.R
+import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -21,21 +21,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.foodapp.R
 import com.example.foodapp.data.Food as ModelFood
 import com.example.foodapp.utils.toVND
 import java.util.Locale
-import android.widget.Toast
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 
-// Định nghĩa màu cam chủ đạo (nếu chưa có trong Theme)
+// Định nghĩa màu cam chủ đạo (Nếu trong dự án đã có theme thì có thể bỏ dòng này)
 val PrimaryOrange = Color(0xFFFF6B3A)
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -89,7 +83,7 @@ fun ProductDetailScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 24.dp, vertical = 16.dp)
-                        .navigationBarsPadding(),
+                        .navigationBarsPadding(), // Đảm bảo không bị che bởi thanh điều hướng hệ thống
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -173,15 +167,15 @@ fun ProductDetailScreen(
             }
         }
     ) { paddingValues ->
-        // Nội dung chi tiết sản phẩm (Cuộn được)
+        // ⭐ ĐÃ SỬA: Sắp xếp lại thứ tự Modifier để fix lỗi bàn phím
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(paddingValues)
+                .padding(paddingValues) // 1. Padding của Scaffold
+                .imePadding()           // 2. Đẩy nội dung lên KHI bàn phím hiện (quan trọng phải đặt trước scroll)
+                .verticalScroll(rememberScrollState()) // 3. Cho phép cuộn phần diện tích còn lại
                 .padding(horizontal = 16.dp)
                 .background(Color.White)
-                .imePadding() // ⭐ THÊM FIX QUAN TRỌNG NÀY ⭐
         ) {
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -318,8 +312,8 @@ fun ProductDetailScreen(
                 }
             }
 
-            // Spacer cuối để nội dung không bị che
-            Spacer(modifier = Modifier.height(32.dp))
+            // Spacer cuối để khi cuộn hết cỡ, nội dung không bị sát mép dưới
+            Spacer(modifier = Modifier.height(300.dp))
         }
     }
 }
