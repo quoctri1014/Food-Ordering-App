@@ -7,7 +7,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions // ⭐ ĐÃ THÊM IMPORT NÀY
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -43,7 +43,7 @@ fun ForgotPasswordScreen(navController: NavController) {
 
     var inputValue by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
-    var selectedTab by remember { mutableStateOf(1) } // 0: SMS, 1: Email
+    var selectedTab by remember { mutableStateOf(1) } // 0: SMS, 1: Email. Đặt mặc định là Email (1)
 
     // Hàm gửi SMS qua Firebase
     fun sendSmsOtp(phoneNumber: String) {
@@ -136,11 +136,13 @@ fun ForgotPasswordScreen(navController: NavController) {
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 Box(modifier = Modifier.weight(1f)) {
+                    // ⭐ THAY ĐỔI: Khóa chức năng SMS và hiển thị Toast "Đang phát triển"
                     OptionCardSmall(
                         icon = Icons.Default.Phone,
                         title = "Via SMS",
                         isSelected = selectedTab == 0,
-                        onClick = { selectedTab = 0; inputValue = "" }
+                        // Thẻ SMS bị khóa (isSelected = false, nhưng isSelected sẽ không được đặt thành 0)
+                        onClick = { Toast.makeText(context, "Đang phát triển", Toast.LENGTH_SHORT).show() }
                     )
                 }
                 Box(modifier = Modifier.weight(1f)) {
@@ -166,7 +168,6 @@ fun ForgotPasswordScreen(navController: NavController) {
                         tint = PrimaryOrange
                     )
                 },
-                // ⭐ ĐÃ SỬA LỖI Ở DÒNG NÀY:
                 keyboardOptions = KeyboardOptions(
                     keyboardType = if (selectedTab == 0) KeyboardType.Phone else KeyboardType.Email
                 ),
@@ -208,6 +209,8 @@ fun ForgotPasswordScreen(navController: NavController) {
 @Composable
 fun OptionCardSmall(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, isSelected: Boolean, onClick: () -> Unit) {
     val borderColor = if (isSelected) PrimaryOrange else Color(0xFFEEEEEE)
+    // ⭐ THAY ĐỔI: Thẻ SMS sẽ không bao giờ có màu PrimaryOrange.copy(alpha = 0.05f) nếu ta không gọi onClick.
+    // Nếu SMS bị khóa, nó sẽ được hiển thị như không được chọn.
     val backgroundColor = if (isSelected) PrimaryOrange.copy(alpha = 0.05f) else Color.White
     val iconColor = if (isSelected) PrimaryOrange else Color.Gray
 
