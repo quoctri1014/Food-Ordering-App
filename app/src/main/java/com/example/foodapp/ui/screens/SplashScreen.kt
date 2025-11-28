@@ -74,7 +74,7 @@ fun SplashScreen(navController: NavController) {
         delay(3000L)
 
         // --- TEST MODE nếu muốn để chạy các luông từ đầu thì bỏ comment còn nếu muốn lưu đăng nhập thì comment dong dươi lai ---
-         FirebaseAuth.getInstance().signOut()
+         //FirebaseAuth.getInstance().signOut()
         // -----------------
 
         // GIAI ĐOẠN 3: Điều hướng
